@@ -18,9 +18,9 @@ import { AuthGuard } from '@nestjs/passport';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Get('google')
-  @UseGuards(AuthGuard('google'))
-  async googlAuth(@Req() req) {}
+  // @Get('google')
+  // @UseGuards(AuthGuard('google'))
+  // async googlAuth(@Req() req) {}
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
