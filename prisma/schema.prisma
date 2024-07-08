@@ -14,14 +14,16 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(uuid())
-  name        String
+  id          String    @id @default(uuid())
+  first_name  String
+  last_name   String
+  picture     String?
   gmail       String
-  phone       String
-  password    String
-  employee_id String
-  join_date   DateTime
-  blood_group String
+  phone       String?
+  // password    String
+  employee_id String?
+  join_date   DateTime?
+  blood_group String?
   auth        Auth?
   role        Role[]
 }

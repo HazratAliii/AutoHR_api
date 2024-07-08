@@ -22,15 +22,20 @@ export class AuthController {
   // @UseGuards(AuthGuard('google'))
   // async googlAuth(@Req() req) {}
 
+  // @Get('google/callback')
+  // @UseGuards(AuthGuard('google'))
+  // async googleAuthRedirect(@Req() req) {
+  //   return {
+  //     message: 'User information from Google',
+  //     user: req.user,
+  //   };
+  // }
+
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  async googleAuthRedirect(@Req() req) {
-    return {
-      message: 'User information from Google',
-      user: req.user,
-    };
+  googleAuthRedirect(@Req() req) {
+    return this.authService.googleAuthRedirect(req);
   }
-
   @Post()
   create(@Body() createAuthDto: CreateAuthDto) {
     return this.authService.create(createAuthDto);
