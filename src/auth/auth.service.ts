@@ -10,12 +10,14 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'prisma/prisma.service';
 import { equal } from 'assert';
 import { getMaxListeners } from 'events';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly config: ConfigService,
     private prisma: PrismaService,
+    private jwtService: JwtService,
   ) {}
 
   create(createAuthDto: CreateAuthDto) {
@@ -23,15 +25,15 @@ export class AuthService {
   }
 
   // async googleAuthRedirect(req) {
-  //   const { email } = req.user.email;
+  //   const { id, email, first_name, last_name, access_token } = req.user.email;
   //   const emailExist = await this.prisma.user.findFirst({
   //     where: {
   //       gmail: email,
   //     },
   //   });
   //   if (!emailExist) {
-  //     const { accessToken } = req.user;
-  //     console.log(accessToken);
+  //     // const { accessToken } = req.user;
+  //     // console.log(accessToken);
   //     const newUser = {
   //       gmail: req.user.email,
   //       first_name: req.user.firstName,
@@ -47,54 +49,47 @@ export class AuthService {
   //       user: req.user,
   //     };
   //   } else {
+  //     console.log(access_token);
   //     throw new BadRequestException('Account already exists');
   //   }
   // }
 
   async googleAuthRedirect(req) {
-    const { email } = req.user.email;
+    const { id, email, first_name, last_name, access_token } = req.user;
 
-    try {
-      const emailExist = await this.prisma.user.findFirst({
-        where: {
-          gmail: email,
-        },
+    // Check if the user already exists
+    const existingUser = await this.prisma.user.findFirst({
+      where: {
+        gmail: email,
+      },
+    });
+
+    if (existingUser) {
+      console.log('User signed in:', req.user.access_token);
+      return {
+        access_token: await this.jwtService.signAsync(req.user),
+      };
+    } else {
+      // User does not exist, signup scenario
+      const newUser = {
+        gmail: req.user.email,
+        first_name: req.user.firstName,
+        last_name: req.user.lastName,
+        picture: req.user.picture,
+      };
+
+      const createdUser = await this.prisma.user.create({
+        // @ts-ignore
+        data: newUser,
       });
 
-      if (!emailExist) {
-        const { id, first_name, last_name, picture } = req.user;
-        const newUser = {
-          gmail: email,
-          first_name,
-          last_name,
-          picture,
-        };
-
-        await this.prisma.user.create({
-          data: newUser,
-        });
-
-        return {
-          message: 'User information from Google',
-          user: req.user,
-        };
-      } else {
-        const { id, first_name, last_name, picture } = req.user;
-        // const payload = { id, access_token };
-        console.log('This is access token', first_name);
-
-        return 'Testing';
-      }
-    } catch (error) {
-      // Check if the error is due to a uniqueness constraint violation
-      if (error.code === 'P2002' && error.meta?.target?.includes('gmail')) {
-        throw new BadRequestException('Account with this email already exists');
-      } else {
-        // Handle other types of errors or re-throw if necessary
-        throw error;
-      }
+      return {
+        message: 'User signed up',
+        user: req.user,
+      };
     }
   }
+
   async signin(req) {
     console.log('Inside signin', req.user);
 
@@ -119,7 +114,9 @@ export class AuthService {
   findAll() {
     return this.prisma.user.findMany();
   }
-
+  test() {
+    return test;
+  }
   findOne(id: string) {
     return this.prisma.user.findUnique({
       where: {
