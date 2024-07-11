@@ -18,27 +18,15 @@ import { AuthGuard } from '@nestjs/passport';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  // @Get('google')
-  // @UseGuards(AuthGuard('google'))
-  // async googlAuth(@Req() req) {}
-
-  // @Get('google/callback')
-  // @UseGuards(AuthGuard('google'))
-  // async googleAuthRedirect(@Req() req) {
-  //   return {
-  //     message: 'User information from Google',
-  //     user: req.user,
-  //   };
-  // }
-
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   googleAuthRedirect(@Req() req) {
     return this.authService.googleAuthRedirect(req);
   }
-  @Post()
-  create(@Body() createAuthDto: CreateAuthDto) {
-    return this.authService.create(createAuthDto);
+  @Get('/signin')
+  // @UseGuards(AuthGuard('google'))
+  signin(@Req() req) {
+    return this.authService.signin(req);
   }
 
   @Get()
@@ -48,7 +36,7 @@ export class AuthController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.authService.findOne(+id);
+    return this.authService.findOne(id);
   }
 
   @Patch(':id')
