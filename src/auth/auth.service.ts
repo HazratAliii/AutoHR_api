@@ -64,8 +64,12 @@ export class AuthService {
     });
 
     if (existingUser) {
+      const temp = {
+        userinfo: req.user,
+        id: existingUser.id,
+      };
       return {
-        access_token: await this.jwtService.signAsync(req.user),
+        access_token: await this.jwtService.signAsync(temp),
       };
     } else {
       // User does not exist, signup scenario
