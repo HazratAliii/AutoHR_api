@@ -13,7 +13,6 @@ import { AuthService } from './auth.service';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 import { AuthGuard } from '@nestjs/passport';
-
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -22,11 +21,6 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   googleAuthRedirect(@Req() req) {
     return this.authService.googleAuthRedirect(req);
-  }
-  @Get('/signin')
-  @UseGuards(AuthGuard('google'))
-  signin(@Req() req) {
-    return this.authService.signin(req);
   }
 
   // @Get()

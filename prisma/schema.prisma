@@ -34,7 +34,7 @@ model Auth {
 model Team {
   id String @id @default(uuid())
   user_id String @unique
-  members String[]
+  members String[] @unique
   user User? @relation(fields: [user_id], references: [id])
 }
 

@@ -17,7 +17,7 @@ export class AuthService {
   constructor(
     private readonly config: ConfigService,
     private prisma: PrismaService,
-    private jwtService: JwtService,
+    private readonly jwtService: JwtService,
   ) {}
 
   create(createAuthDto: CreateAuthDto) {
@@ -65,9 +65,12 @@ export class AuthService {
     });
 
     if (existingUser) {
-      console.log('User signed in:', req.user.access_token);
+      const temp = {
+        userinfo: req.user,
+        id: existingUser.id,
+      };
       return {
-        access_token: await this.jwtService.signAsync(req.user),
+        access_token: await this.jwtService.signAsync(temp),
       };
     } else {
       // User does not exist, signup scenario
