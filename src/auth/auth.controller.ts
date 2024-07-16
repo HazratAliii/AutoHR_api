@@ -3,9 +3,7 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
-  Delete,
   UseGuards,
   Req,
 } from '@nestjs/common';
@@ -23,23 +21,18 @@ export class AuthController {
     return this.authService.googleAuthRedirect(req);
   }
 
-  @Get()
-  findAll() {
-    return this.authService.findAll();
+  @Post()
+  saveTokens(
+    @Param('id') id: string,
+    @Body('accessToken') accessToken: string,
+    @Body('refreshToken') refreshToken: string,
+  ) {
+    return this.authService.saveTokens(id, accessToken, refreshToken);
   }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.authService.findOne(id);
+  getTokens(@Param('id') id: string) {
+    return this.authService.getTokens(id);
   }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAuthDto: UpdateAuthDto) {
-    return this.authService.update(+id, updateAuthDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.authService.remove(+id);
+  deleteTokens(@Param('id') id: string) {
+    return this.authService.deleteTokens(id);
   }
 }

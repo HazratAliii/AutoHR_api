@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  NotFoundException,
   Req,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -8,8 +9,6 @@ import { CreateAuthDto } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'prisma/prisma.service';
-import { equal } from 'assert';
-import { getMaxListeners } from 'events';
 import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
@@ -24,39 +23,9 @@ export class AuthService {
     return `This action returns all auth`;
   }
 
-  // async googleAuthRedirect(req) {
-  //   const { email } = req.user.email;
-  //   const emailExist = await this.prisma.user.findFirst({
-  //     where: {
-  //       gmail: email,
-  //     },
-  //   });
-  //   if (!emailExist) {
-  //     const { accessToken } = req.user;
-  //     console.log(accessToken);
-  //     const newUser = {
-  //       gmail: req.user.email,
-  //       first_name: req.user.firstName,
-  //       last_name: req.user.lastName,
-  //       picture: req.user.picture,
-  //     };
-  //     await this.prisma.user.create({
-  //       // @ts-ignore
-  //       data: newUser,
-  //     });
-  //     return {
-  //       message: 'User information from Google',
-  //       user: req.user,
-  //     };
-  //   } else {
-  //     throw new BadRequestException('Account already exists');
-  //   }
-  // }
-
   async googleAuthRedirect(req) {
     const { id, email, first_name, last_name, access_token } = req.user;
 
-    // Check if the user already exists
     const existingUser = await this.prisma.user.findFirst({
       where: {
         gmail: email,
@@ -72,7 +41,6 @@ export class AuthService {
         access_token: await this.jwtService.signAsync(temp),
       };
     } else {
-      // User does not exist, signup scenario
       const newUser = {
         gmail: req.user.email,
         first_name: req.user.firstName,
@@ -91,44 +59,51 @@ export class AuthService {
       };
     }
   }
-  async signin(req) {
-    console.log('Inside signin', req.user);
-
+  async saveTokens(id: string, accessToken: string, refreshToken: string) {
     try {
-      const { email, access_token } = req.user;
-      const emailExist = await this.prisma.user.findUnique({
-        where: {
-          gmail: email,
+      return this.prisma.auth.upsert({
+        where: { user_id: id },
+        update: { access_token: accessToken, refresh_token: refreshToken },
+        create: {
+          user_id: id,
+          access_token: accessToken,
+          refresh_token: refreshToken,
         },
       });
-      console.log(emailExist);
-
-      if (emailExist) {
-        return access_token;
+    } catch (e) {
+      throw new BadRequestException(e);
+    }
+  }
+  async getTokens(id: string) {
+    try {
+      const tokenExists = await this.prisma.auth.findUnique({
+        where: { user_id: id },
+      });
+      if (tokenExists) {
+        return tokenExists;
       } else {
-        throw new UnauthorizedException('Create account first');
+        throw new NotFoundException();
       }
     } catch (e) {
       throw new BadRequestException(e);
     }
   }
-  findAll() {
-    return this.prisma.user.findMany();
-  }
-
-  findOne(id: string) {
-    return this.prisma.user.findUnique({
-      where: {
-        id,
-      },
-    });
-  }
-
-  update(id: number, updateAuthDto: UpdateAuthDto) {
-    return `This action updates a #${id} auth`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} auth`;
+  async deleteTokens(id: string) {
+    try {
+      const tokenExists = await this.prisma.auth.findUnique({
+        where: { user_id: id },
+      });
+      if (tokenExists) {
+        return await this.prisma.auth.delete({
+          where: {
+            user_id: id,
+          },
+        });
+      } else {
+        throw new NotFoundException();
+      }
+    } catch (e) {
+      throw new BadRequestException(e);
+    }
   }
 }
