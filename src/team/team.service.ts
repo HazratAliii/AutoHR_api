@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateTeamDto } from './dto/create-team.dto';
 import { UpdateTeamDto } from './dto/update-team.dto';
 import { PrismaService } from 'prisma/prisma.service';
@@ -7,23 +11,78 @@ import { PrismaService } from 'prisma/prisma.service';
 export class TeamService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(createTeamDto: CreateTeamDto) {
-    return 'This action adds a new team';
+  async create(createTeamDto: CreateTeamDto) {
+    try {
+      // @ts-ignore
+      const { user_id, members } = createTeamDto;
+      const newTeam = await this.prisma.team.create({
+        data: {
+          user_id,
+          members,
+        },
+      });
+      return newTeam;
+    } catch (e) {
+      throw new BadRequestException(e);
+    }
   }
 
-  findAll() {
-    return this.prisma.team.findMany();
+  async findAll() {
+    try {
+      const teams = this.prisma.team.findMany();
+      return teams;
+    } catch (e) {
+      throw new BadRequestException(e);
+    }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} team`;
+  findOne(id: string) {
+    try {
+      const team = this.prisma.team.findUnique({
+        where: {
+          id,
+        },
+      });
+      // return team ? team : throw new NotFoundException()
+      if (team) return team;
+      else throw new NotFoundException();
+    } catch (e) {
+      throw new BadRequestException();
+    }
   }
 
-  update(id: number, updateTeamDto: UpdateTeamDto) {
-    return `This action updates a #${id} team`;
+  update(id: string, updateTeamDto: UpdateTeamDto) {
+    try {
+      const teamExists = this.prisma.team.findUnique({
+        where: {
+          id,
+        },
+      });
+      if (teamExists) {
+      } else {
+        throw new NotFoundException();
+      }
+    } catch (e) {}
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} team`;
+  remove(id: string) {
+    try {
+      const teamExists = this.prisma.team.findUnique({
+        where: {
+          id,
+        },
+      });
+      if (teamExists) {
+        return this.prisma.team.delete({
+          where: {
+            id,
+          },
+        });
+      } else {
+        throw new NotFoundException();
+      }
+    } catch (e) {
+      throw new BadRequestException(e);
+    }
   }
 }

@@ -13,8 +13,6 @@ import { AuthService } from './auth.service';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 import { AuthGuard } from '@nestjs/passport';
-import { IsValid } from './auth.guard';
-import { Request } from 'express';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -24,19 +22,7 @@ export class AuthController {
   googleAuthRedirect(@Req() req) {
     return this.authService.googleAuthRedirect(req);
   }
-  @Get('/signin')
-  // @UseGuards(AuthGuard('google'))
-  signin(@Req() req) {
-    return this.authService.signin(req);
-  }
 
-  @Get('test')
-  @UseGuards(IsValid)
-  test(@Req() req: Request) {
-    // @ts-ignore
-    console.log('Req ', req.user);
-    return 'testing';
-  }
   @Get()
   findAll() {
     return this.authService.findAll();

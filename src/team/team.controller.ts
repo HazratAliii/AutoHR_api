@@ -13,12 +13,13 @@ import { CreateTeamDto } from './dto/create-team.dto';
 import { UpdateTeamDto } from './dto/update-team.dto';
 import { IsValid } from 'src/auth/auth.guard';
 
-@Controller('team')
+@Controller('api/team')
 export class TeamController {
   constructor(private readonly teamService: TeamService) {}
-
+  @UseGuards(IsValid)
   @Post()
-  create(@Body() createTeamDto: CreateTeamDto) {
+  // create(@Body() createTeamDto: CreateTeamDto) {
+  create(@Body() createTeamDto: any) {
     return this.teamService.create(createTeamDto);
   }
 
@@ -29,17 +30,20 @@ export class TeamController {
   }
 
   @Get(':id')
+  @UseGuards(IsValid)
   findOne(@Param('id') id: string) {
-    return this.teamService.findOne(+id);
+    return this.teamService.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateTeamDto: UpdateTeamDto) {
-    return this.teamService.update(+id, updateTeamDto);
+  // update(@Param('id') id: string, @Body() updateTeamDto: UpdateTeamDto) {
+  update(@Param('id') id: string, @Body() updateTeamDto: any) {
+    return this.teamService.update(id, updateTeamDto);
   }
 
   @Delete(':id')
+  @UseGuards(IsValid)
   remove(@Param('id') id: string) {
-    return this.teamService.remove(+id);
+    return this.teamService.remove(id);
   }
 }
