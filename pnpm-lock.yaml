@@ -29,6 +29,9 @@ dependencies:
   '@prisma/client':
     specifier: 5.16.1
     version: 5.16.1(prisma@5.16.1)
+  bcryptjs:
+    specifier: ^2.4.3
+    version: 2.4.3
   passport:
     specifier: ^0.7.0
     version: 0.7.0
@@ -1870,6 +1873,10 @@ packages:
   /base64url@3.0.1:
     resolution: {integrity: sha512-ir1UPr3dkwexU7FdV8qBBbNDRUhMmIekYMFZfi+C/sLNnRESKPl23nB9b2pltqfOQNnGzsDdId90AEtG5tCx4A==}
     engines: {node: '>=6.0.0'}
+    dev: false
+
+  /bcryptjs@2.4.3:
+    resolution: {integrity: sha512-V/Hy/X9Vt7f3BbPJEi8BdVFMByHi+jNXrYkW3huaybV/kQ0KJg0Y6PkEMbn+zeT+i+SiKZ/HMqJGIIt4LZDqNQ==}
     dev: false
 
   /binary-extensions@2.3.0:

@@ -1,30 +1,31 @@
 import {
-  BadRequestException,
   Injectable,
   NotFoundException,
-  Req,
-  UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import { PrismaService } from 'prisma/prisma.service';
+import * as bcrypt from 'bcryptjs';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
-import { ConfigService } from '@nestjs/config';
-import { PrismaService } from 'prisma/prisma.service';
-import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly config: ConfigService,
-    private prisma: PrismaService,
+    private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
   ) {}
 
-  create(createAuthDto: CreateAuthDto) {
+  // Public Methods
+
+  async create(createAuthDto: CreateAuthDto) {
     return `This action returns all auth`;
   }
 
   async googleAuthRedirect(req) {
-    const { id, email, first_name, last_name, access_token } = req.user;
+    const { id, email, firstName, lastName, picture } = req.user;
 
     const existingUser = await this.prisma.user.findFirst({
       where: {
@@ -37,8 +38,12 @@ export class AuthService {
         userinfo: req.user,
         id: existingUser.id,
       };
+      const access_token = await this.generateAccessToken(existingUser.id);
+      const refresh_token = await this.generateRefreshToken(existingUser.id);
+      this.saveTokens(existingUser.id, access_token, refresh_token);
       return {
-        access_token: await this.jwtService.signAsync(temp),
+        access_token,
+        refresh_token,
       };
     } else {
       const newUser = {
@@ -49,38 +54,51 @@ export class AuthService {
       };
 
       const createdUser = await this.prisma.user.create({
-        // @ts-ignore
         data: newUser,
       });
 
       return {
         message: 'User signed up',
-        user: req.user,
+        // user: req.user,
       };
     }
   }
-  async saveTokens(id: string, accessToken: string, refreshToken: string) {
-    try {
-      return this.prisma.auth.upsert({
-        where: { user_id: id },
-        update: { access_token: accessToken, refresh_token: refreshToken },
-        create: {
-          user_id: id,
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        },
-      });
-    } catch (e) {
-      throw new BadRequestException(e);
+
+  async getNewAccessToken(id: string, refreshToken: string) {
+    const tokenExist = await this.prisma.auth.findUnique({
+      where: {
+        user_id: id,
+      },
+    });
+    if (tokenExist) {
+      console.log(refreshToken, ' AND ', tokenExist.refresh_token);
+      if (refreshToken == tokenExist.refresh_token) {
+        const access_token = await this.generateAccessToken(tokenExist.id);
+        const refresh_token = await this.generateRefreshToken(tokenExist.id);
+        await this.saveTokens(id, access_token, refresh_token);
+        return {
+          access_token: access_token,
+        };
+      } else {
+        console.log('Inside nested else');
+        throw new BadRequestException();
+      }
+    } else {
+      console.log('Inside else');
+      throw new NotFoundException('Token not found');
     }
   }
+
   async getTokens(id: string) {
     try {
       const tokenExists = await this.prisma.auth.findUnique({
         where: { user_id: id },
       });
       if (tokenExists) {
-        return tokenExists;
+        return {
+          accessToken: tokenExists.access_token,
+          refreshToken: tokenExists.refresh_token,
+        };
       } else {
         throw new NotFoundException();
       }
@@ -88,6 +106,7 @@ export class AuthService {
       throw new BadRequestException(e);
     }
   }
+
   async deleteTokens(id: string) {
     try {
       const tokenExists = await this.prisma.auth.findUnique({
@@ -102,6 +121,39 @@ export class AuthService {
       } else {
         throw new NotFoundException();
       }
+    } catch (e) {
+      throw new BadRequestException(e);
+    }
+  }
+
+  // Private Methods
+
+  private async generateAccessToken(id: string) {
+    return await this.jwtService.signAsync({ id });
+  }
+
+  private async generateRefreshToken(id: string) {
+    const salt = await bcrypt.genSalt(10);
+    const token = await bcrypt.hash(id, salt);
+    return token;
+  }
+
+  private async saveTokens(
+    id: string,
+    accessToken: string,
+    refreshToken: string,
+  ) {
+    try {
+      return await this.prisma.auth.upsert({
+        where: { user_id: id },
+        update: { access_token: accessToken, refresh_token: refreshToken },
+        create: {
+          user_id: id,
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        },
+      });
+      console.log('done saeing');
     } catch (e) {
       throw new BadRequestException(e);
     }

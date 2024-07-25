@@ -11,6 +11,7 @@ import { AuthService } from './auth.service';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { IsValid } from './auth.guard';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -27,8 +28,17 @@ export class AuthController {
     @Body('accessToken') accessToken: string,
     @Body('refreshToken') refreshToken: string,
   ) {
-    return this.authService.saveTokens(id, accessToken, refreshToken);
+    // return this.authService.saveTokens(id, accessToken, refreshToken);
   }
+  // @UseGuards(IsValid)
+  @Get('newtoken/:id/:refreshToken')
+  getNewAccessToken(
+    @Param('id') id: string,
+    @Param('refreshToken') refreshToken: string,
+  ) {
+    this.authService.getNewAccessToken(id, refreshToken);
+  }
+  @Get('token/:id')
   getTokens(@Param('id') id: string) {
     return this.authService.getTokens(id);
   }
