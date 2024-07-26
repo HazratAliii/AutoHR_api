@@ -2,13 +2,18 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'prisma/prisma.service';
-import * as bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
+import { last } from 'rxjs';
+import { error } from 'console';
+import { SignInAuthDto } from './dto/signin.dto';
 
 @Injectable()
 export class AuthService {
@@ -58,33 +63,102 @@ export class AuthService {
       });
 
       return {
-        message: 'User signed up',
-        // user: req.user,
+        message: 'user created successfully',
+        data: {
+          first_name: newUser.first_name,
+          last_name: newUser.last_name,
+          gmail: newUser.gmail,
+        },
       };
     }
   }
 
-  async getNewAccessToken(id: string, refreshToken: string) {
+  async emailSignup(createAuthDto: CreateAuthDto) {
+    try {
+      const userExist = await this.prisma.user.findUnique({
+        where: {
+          gmail: createAuthDto.gmail,
+        },
+      });
+      if (userExist) {
+        throw new ConflictException('User already exists');
+      } else {
+        const hash = await bcrypt.hash(createAuthDto.password, 10);
+        const newUserObj = {
+          first_name: createAuthDto.first_name,
+          last_name: createAuthDto.last_name,
+          gmail: createAuthDto.gmail,
+          password: hash,
+        };
+        const newUser = await this.prisma.user.create({ data: newUserObj });
+        return {
+          message: 'user created successfully',
+          data: {
+            first_name: newUser.first_name,
+            last_name: newUser.last_name,
+            gmail: newUser.gmail,
+          },
+        };
+      }
+    } catch (e) {
+      if (e instanceof ConflictException) {
+        throw e;
+      } else {
+        throw new BadRequestException('An error occured while creating user');
+      }
+    }
+  }
+
+  async emailSignin(signinAuthDto: SignInAuthDto) {
+    try {
+      const userExist = await this.prisma.user.findUnique({
+        where: {
+          gmail: signinAuthDto.gmail,
+        },
+      });
+      console.log('user exist ', userExist);
+      if (!userExist) {
+        throw new NotFoundException('User not found');
+      } else {
+        const isMatch = await bcrypt.compare(
+          signinAuthDto.password,
+          userExist.password,
+        );
+        if (!isMatch) throw new UnauthorizedException('Invalid credentials');
+
+        const access_token = await this.generateAccessToken(userExist.id);
+        const refresh_token = await this.generateRefreshToken(userExist.id);
+        this.saveTokens(userExist.id, access_token, refresh_token);
+        return {
+          access_token,
+          refresh_token,
+        };
+      }
+    } catch (e) {
+      if (e instanceof NotFoundException) {
+        throw e;
+      } else if (e instanceof UnauthorizedException) {
+        throw e;
+      } else {
+        throw new BadRequestException('An error occured while signing in');
+      }
+    }
+  }
+
+  async getNewAccessToken(id: string) {
     const tokenExist = await this.prisma.auth.findUnique({
       where: {
         user_id: id,
       },
     });
     if (tokenExist) {
-      console.log(refreshToken, ' AND ', tokenExist.refresh_token);
-      if (refreshToken == tokenExist.refresh_token) {
-        const access_token = await this.generateAccessToken(tokenExist.id);
-        const refresh_token = await this.generateRefreshToken(tokenExist.id);
-        await this.saveTokens(id, access_token, refresh_token);
-        return {
-          access_token: access_token,
-        };
-      } else {
-        console.log('Inside nested else');
-        throw new BadRequestException();
-      }
+      const access_token = await this.generateAccessToken(tokenExist.id);
+      const refresh_token = await this.generateRefreshToken(tokenExist.id);
+      await this.saveTokens(id, access_token, refresh_token);
+      return {
+        access_token,
+      };
     } else {
-      console.log('Inside else');
       throw new NotFoundException('Token not found');
     }
   }
@@ -122,7 +196,11 @@ export class AuthService {
         throw new NotFoundException();
       }
     } catch (e) {
-      throw new BadRequestException(e);
+      if (e instanceof NotFoundException) {
+        throw e;
+      } else {
+        throw new BadRequestException(e);
+      }
     }
   }
 

@@ -12,6 +12,7 @@ import { CreateAuthDto } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { IsValid } from './auth.guard';
+import { SignInAuthDto } from './dto/signin.dto';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -22,21 +23,22 @@ export class AuthController {
     return this.authService.googleAuthRedirect(req);
   }
 
-  @Post()
-  saveTokens(
-    @Param('id') id: string,
-    @Body('accessToken') accessToken: string,
-    @Body('refreshToken') refreshToken: string,
-  ) {
-    // return this.authService.saveTokens(id, accessToken, refreshToken);
+  @Post('signup')
+  emailSignup(@Body() createAuthDto: CreateAuthDto) {
+    return this.authService.emailSignup(createAuthDto);
   }
-  // @UseGuards(IsValid)
-  @Get('newtoken/:id/:refreshToken')
+
+  @Post('signin')
+  emailSignin(@Body() signinAuthDto: SignInAuthDto) {
+    return this.authService.emailSignin(signinAuthDto);
+  }
+  @Get('newtoken/:id')
   getNewAccessToken(
     @Param('id') id: string,
-    @Param('refreshToken') refreshToken: string,
+    // @Param('refreshToken') refreshToken: string,
   ) {
-    this.authService.getNewAccessToken(id, refreshToken);
+    // this.authService.getNewAccessToken(id, refreshToken);
+    return this.authService.getNewAccessToken(id);
   }
   @Get('token/:id')
   getTokens(@Param('id') id: string) {
