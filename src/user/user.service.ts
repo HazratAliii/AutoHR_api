@@ -33,7 +33,8 @@ export class UserService {
         throw new NotFoundException();
       }
     } catch (e) {
-      throw new BadRequestException(e);
+      if (e instanceof NotFoundException) throw NotFoundException;
+      else throw new BadRequestException(e);
     }
   }
 
@@ -58,7 +59,8 @@ export class UserService {
         throw new NotFoundException();
       }
     } catch (e) {
-      throw new BadRequestException(e);
+      if (e instanceof NotFoundException) throw NotFoundException;
+      else throw new BadRequestException(e);
     }
   }
 }
