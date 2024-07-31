@@ -8,10 +8,14 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from 'prisma/prisma.service';
 import { Request } from 'express';
+import { MinioService } from 'src/minio/minio.service';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly minioService: MinioService,
+  ) {}
 
   async findAll() {
     try {
@@ -99,6 +103,27 @@ export class UserService {
     } catch (e) {
       if (e instanceof NotFoundException) throw NotFoundException;
       else throw new BadRequestException(e);
+    }
+  }
+
+  async uploadFile(file: Express.Multer.File, req: Request) {
+    try {
+      // @ts-ignore
+      const id = req.user.id;
+      const filePath = await this.minioService.uploadFile(file, id);
+      await this.prisma.user.update({
+        where: { id },
+        data: {
+          picture: filePath,
+        },
+      });
+      return {
+        message: 'File uploaded successfully',
+      };
+    } catch (e) {
+      throw new BadRequestException(
+        'Something went wrong while uploading picture',
+      );
     }
   }
 }

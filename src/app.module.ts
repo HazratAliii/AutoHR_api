@@ -5,6 +5,8 @@ import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { TeamModule } from './team/team.module';
 import { UserModule } from './user/user.module';
+import { MinioService } from './minio/minio.service';
+import { MinioModule } from './minio/minio.module';
 
 @Module({
   imports: [
@@ -14,8 +16,9 @@ import { UserModule } from './user/user.module';
     AuthModule,
     TeamModule,
     UserModule,
+    MinioModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, MinioService],
 })
 export class AppModule {}
