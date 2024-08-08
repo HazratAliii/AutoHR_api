@@ -30,7 +30,7 @@ export class AuthService {
   }
 
   async googleAuthRedirect(req) {
-    const { id, email, firstName, lastName, picture } = req.user;
+    const { email } = req.user;
 
     const existingUser = await this.prisma.user.findFirst({
       where: {
@@ -39,10 +39,6 @@ export class AuthService {
     });
 
     if (existingUser) {
-      const temp = {
-        userinfo: req.user,
-        id: existingUser.id,
-      };
       const access_token = await this.generateAccessToken(existingUser.id);
       const refresh_token = await this.generateRefreshToken(existingUser.id);
       this.saveTokens(existingUser.id, access_token, refresh_token);
@@ -116,7 +112,6 @@ export class AuthService {
           gmail: signinAuthDto.gmail,
         },
       });
-      console.log('user exist ', userExist);
       if (!userExist) {
         throw new NotFoundException('User not found');
       } else {

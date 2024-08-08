@@ -20,18 +20,44 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { IsValid } from 'src/auth/auth.guard';
 import { Request } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 
+@ApiTags('User')
 @Controller('api/user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get()
+  @ApiOperation({
+    summary: 'Users list',
+    description: 'Displays all users',
+  })
+  @ApiResponse({ status: 201, description: 'Displayes all users' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiBearerAuth('access_token')
   @UseGuards(IsValid)
   findAll() {
     return this.userService.findAll();
   }
 
   @Get(':id')
+  @ApiOperation({
+    summary: 'Users information',
+    description: 'Displays single user based on id',
+  })
+  @ApiBearerAuth('access_token')
+  @ApiResponse({ status: 201, description: 'User information' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
   findOne(@Param('id') id: string) {
     return this.userService.findOne(id);
   }
@@ -46,6 +72,47 @@ export class UserController {
     return this.userService.update(id, updateUserDto, request);
   }
   @Post('/uploadfile')
+  @ApiOperation({
+    summary: 'Upload a file',
+    description:
+      'Uploads a file with validation constraints. Accepts images with JPEG or PNG formats and size up to 10MB.',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'File to be uploaded',
+    type: 'multipart/form-data',
+    required: true,
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+    examples: {
+      'application/json': {
+        value: {
+          file: 'example.png',
+        },
+      },
+    },
+  })
+  @ApiBearerAuth('access_token')
+  @ApiResponse({
+    status: 200,
+    description: 'File successfully uploaded.',
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Bad Request. The file may be too large, or the file type is not allowed.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+  })
   @UseGuards(IsValid)
   @UseInterceptors(FileInterceptor('file'))
   uploadFile(
@@ -54,7 +121,7 @@ export class UserController {
         validators: [
           new MaxFileSizeValidator({ maxSize: 10000000 }),
           new FileTypeValidator({
-            fileType: 'image/jpeg | image/png | image/jpg',
+            fileType: 'image/jpeg|image/png|image/jpg',
           }),
         ],
       }),
@@ -66,6 +133,10 @@ export class UserController {
   }
 
   @Delete(':id')
+  @UseGuards(IsValid)
+  @ApiOperation({
+    summary: 'Remove a user',
+  })
   remove(@Param('id') id: string) {
     return this.userService.remove(id);
   }

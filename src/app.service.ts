@@ -1,8 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 
 @Injectable()
 export class AppService {
   getHello(): string {
-    return 'Hello World!';
+    try {
+      return 'Up and running';
+    } catch (e) {
+      throw new ServiceUnavailableException(e);
+    }
   }
 }

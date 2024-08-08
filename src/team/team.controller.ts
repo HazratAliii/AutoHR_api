@@ -12,7 +12,9 @@ import { TeamService } from './team.service';
 import { CreateTeamDto } from './dto/create-team.dto';
 import { UpdateTeamDto } from './dto/update-team.dto';
 import { IsValid } from 'src/auth/auth.guard';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Team')
 @Controller('api/team')
 export class TeamController {
   constructor(private readonly teamService: TeamService) {}

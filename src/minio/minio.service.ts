@@ -46,7 +46,7 @@ export class MinioService {
 
       return filePath;
     } catch (e) {
-      console.log('Error uploading file');
+      console.log('Error uploading file', e);
     }
   }
 }
