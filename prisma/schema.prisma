@@ -25,14 +25,14 @@ model User {
 
 model Auth {
   id            String  @id @default(uuid())
-  refresh_token String?
-  access_token  String?
+  refresh_token String? @unique
   user_id       String  @unique
   user          User?   @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
 model Team {
   id      String   @id @default(uuid())
+  name    String 
   user_id String   @unique
   members String[] @unique
   user    User?    @relation(fields: [user_id], references: [id], onDelete: Cascade)

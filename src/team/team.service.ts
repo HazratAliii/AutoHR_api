@@ -11,39 +11,41 @@ import { PrismaService } from 'prisma/prisma.service';
 export class TeamService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createTeamDto: CreateTeamDto) {
+  async create(createTeamDto: CreateTeamDto, req: Request) {
     try {
-      // @ts-ignore
-      const { user_id, members } = createTeamDto;
+      const user_id = req['user'].id;
+      const { name, members } = createTeamDto;
       const newTeam = await this.prisma.team.create({
         data: {
           user_id,
+          // @ts-ignore
+          name,
           members,
         },
       });
       return newTeam;
     } catch (e) {
+      console.log(e);
       throw new BadRequestException(e);
     }
   }
 
   async findAll() {
     try {
-      const teams = this.prisma.team.findMany();
+      const teams = await this.prisma.team.findMany();
       return teams;
     } catch (e) {
       throw new BadRequestException(e);
     }
   }
 
-  findOne(id: string) {
+  async findOne(id: string) {
     try {
-      const team = this.prisma.team.findUnique({
+      const team = await this.prisma.team.findUnique({
         where: {
           id,
         },
       });
-      // return team ? team : throw new NotFoundException()
       if (team) return team;
       else throw new NotFoundException();
     } catch (e) {
@@ -51,9 +53,21 @@ export class TeamService {
     }
   }
 
-  update(id: string, updateTeamDto: UpdateTeamDto) {
+  async yourTeams(req: Request) {
     try {
-      const teamExists = this.prisma.team.findUnique({
+      const user_id = req['user'].id;
+      return await this.prisma.team.findMany({
+        where: {
+          user_id,
+        },
+      });
+    } catch (e) {
+      throw new BadRequestException(e);
+    }
+  }
+  async update(id: string, updateTeamDto: UpdateTeamDto) {
+    try {
+      const teamExists = await this.prisma.team.findUnique({
         where: {
           id,
         },
@@ -65,9 +79,9 @@ export class TeamService {
     } catch (e) {}
   }
 
-  remove(id: string) {
+  async remove(id: string) {
     try {
-      const teamExists = this.prisma.team.findUnique({
+      const teamExists = await this.prisma.team.findUnique({
         where: {
           id,
         },

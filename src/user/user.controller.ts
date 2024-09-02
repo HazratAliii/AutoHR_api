@@ -73,9 +73,9 @@ export class UserController {
   }
   @Post('/uploadfile')
   @ApiOperation({
-    summary: 'Upload a file',
+    summary: 'Upload picture',
     description:
-      'Uploads a file with validation constraints. Accepts images with JPEG or PNG formats and size up to 10MB.',
+      'Uploads an image with validation constraints. Accepts images with JPEG or PNG formats and size up to 10MB.',
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -133,10 +133,24 @@ export class UserController {
   }
 
   @Delete(':id')
-  @UseGuards(IsValid)
   @ApiOperation({
     summary: 'Remove a user',
+    description: 'Deletes user based on id',
   })
+  @ApiResponse({
+    status: 200,
+    description: 'User delete successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'User not found',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+  })
+  @ApiBearerAuth('access_token')
+  @UseGuards(IsValid)
   remove(@Param('id') id: string) {
     return this.userService.remove(id);
   }

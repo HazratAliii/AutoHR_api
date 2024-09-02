@@ -11,9 +11,10 @@ import { PrismaService } from 'prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
-import { last } from 'rxjs';
+import { last, noop } from 'rxjs';
 import { error } from 'console';
 import { SignInAuthDto } from './dto/signin.dto';
+import { Response, Request } from 'express';
 
 @Injectable()
 export class AuthService {
@@ -29,7 +30,7 @@ export class AuthService {
     return `This action returns all auth`;
   }
 
-  async googleAuthRedirect(req) {
+  async googleAuthRedirect(req, res) {
     const { email } = req.user;
 
     const existingUser = await this.prisma.user.findFirst({
@@ -41,11 +42,27 @@ export class AuthService {
     if (existingUser) {
       const access_token = await this.generateAccessToken(existingUser.id);
       const refresh_token = await this.generateRefreshToken(existingUser.id);
-      this.saveTokens(existingUser.id, access_token, refresh_token);
-      return {
-        access_token,
-        refresh_token,
+      this.saveTokens(existingUser.id, refresh_token);
+
+      res.cookie('refresh_token', refresh_token, {
+        httpOnly: true,
+        sameSite: 'none',
+        secure: true,
+      });
+
+      res.cookie('access_token', access_token, {
+        httpOnly: true,
+        sameSite: 'none',
+        secure: true,
+      });
+      const retObj = {
+        acces_token: access_token,
+        id: existingUser.id,
+        first_name: existingUser.first_name,
+        last_name: existingUser.last_name,
+        image: existingUser.picture,
       };
+      return res.json(retObj);
     } else {
       const newUser = {
         gmail: req.user.email,
@@ -105,7 +122,7 @@ export class AuthService {
     }
   }
 
-  async emailSignin(signinAuthDto: SignInAuthDto) {
+  async emailSignin(signinAuthDto: SignInAuthDto, res: Response) {
     try {
       const userExist = await this.prisma.user.findUnique({
         where: {
@@ -123,11 +140,32 @@ export class AuthService {
 
         const access_token = await this.generateAccessToken(userExist.id);
         const refresh_token = await this.generateRefreshToken(userExist.id);
-        this.saveTokens(userExist.id, access_token, refresh_token);
-        return {
-          access_token,
-          refresh_token,
+        this.saveTokens(userExist.id, refresh_token);
+        res.cookie('refresh_token', refresh_token, {
+          httpOnly: true,
+          sameSite: 'none',
+          secure: true,
+          domain: '.auto.hr.arisaftech.com',
+          path: '/',
+          maxAge: 24 * 7 * 60 * 60 * 1000,
+        });
+        res.cookie('access_token', access_token, {
+          httpOnly: true,
+          sameSite: 'none',
+          secure: true,
+          domain: '.auto.hr.arisaftech.com',
+          path: '/',
+          maxAge: 60 * 60 * 1000,
+        });
+
+        const retObj = {
+          access_token: access_token,
+          id: userExist.id,
+          first_name: userExist.first_name,
+          last_name: userExist.last_name,
+          image: userExist.picture,
         };
+        return res.json(retObj);
       }
     } catch (e) {
       if (e instanceof NotFoundException) {
@@ -140,55 +178,66 @@ export class AuthService {
     }
   }
 
-  async getNewAccessToken(id: string) {
-    const tokenExist = await this.prisma.auth.findUnique({
-      where: {
-        user_id: id,
-      },
-    });
-    if (tokenExist) {
-      const access_token = await this.generateAccessToken(tokenExist.id);
-      const refresh_token = await this.generateRefreshToken(tokenExist.id);
-      await this.saveTokens(id, access_token, refresh_token);
-      return {
-        access_token,
-      };
-    } else {
-      throw new NotFoundException('Token not found');
-    }
-  }
-
-  async getTokens(id: string) {
+  async getNewAccessToken(req: Request) {
     try {
-      const tokenExists = await this.prisma.auth.findUnique({
-        where: { user_id: id },
-      });
-      if (tokenExists) {
-        return {
-          accessToken: tokenExists.access_token,
-          refreshToken: tokenExists.refresh_token,
-        };
-      } else {
-        throw new NotFoundException();
+      const refreshToken = req.cookies.refresh_token;
+      if (!refreshToken) {
+        throw new UnauthorizedException('No refresh token provided');
       }
+
+      const tokenExists = await this.prisma.auth.findUnique({
+        // @ts-ignore
+        where: {
+          refresh_token: refreshToken,
+        },
+      });
+
+      if (!tokenExists) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      const isMatch = await bcrypt.compare(tokenExists.user_id, refreshToken);
+
+      if (!isMatch) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      const accessToken = await this.generateAccessToken(tokenExists.id);
+
+      return { accessToken };
     } catch (e) {
-      throw new BadRequestException(e);
+      if (e instanceof UnauthorizedException) {
+        throw e;
+      } else {
+        throw new BadRequestException(
+          'An error occurred while refreshing the access token',
+        );
+      }
     }
   }
 
-  async deleteTokens(id: string) {
+  async signOut(req: Request) {
     try {
+      const id = req['user'].id;
+      console.log('id ', id);
       const tokenExists = await this.prisma.auth.findUnique({
         where: { user_id: id },
       });
+      console.log('Token ', tokenExists);
       if (tokenExists) {
-        return await this.prisma.auth.delete({
+        const temp = await this.jwtService.signAsync(
+          { id },
+          { expiresIn: '1s' },
+        );
+        console.log(temp);
+        await this.prisma.auth.delete({
           where: {
             user_id: id,
           },
         });
+        return 'User signed out';
       } else {
-        throw new NotFoundException();
+        throw new NotFoundException('Token not found');
       }
     } catch (e) {
       if (e instanceof NotFoundException) {
@@ -202,7 +251,7 @@ export class AuthService {
   // Private Methods
 
   private async generateAccessToken(id: string) {
-    return await this.jwtService.signAsync({ id });
+    return await this.jwtService.signAsync({ id }, { expiresIn: '1h' });
   }
 
   private async generateRefreshToken(id: string) {
@@ -211,22 +260,16 @@ export class AuthService {
     return token;
   }
 
-  private async saveTokens(
-    id: string,
-    accessToken: string,
-    refreshToken: string,
-  ) {
+  private async saveTokens(id: string, refreshToken: string) {
     try {
       return await this.prisma.auth.upsert({
         where: { user_id: id },
-        update: { access_token: accessToken, refresh_token: refreshToken },
+        update: { refresh_token: refreshToken },
         create: {
           user_id: id,
-          access_token: accessToken,
           refresh_token: refreshToken,
         },
       });
-      console.log('done saeing');
     } catch (e) {
       throw new BadRequestException(e);
     }

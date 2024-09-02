@@ -6,14 +6,22 @@ import {
   Param,
   UseGuards,
   Req,
+  Res,
+  HttpStatus,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 import { AuthGuard } from '@nestjs/passport';
-import { IsValid } from './auth.guard';
 import { SignInAuthDto } from './dto/signin.dto';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import { Response, Request } from 'express';
+import { IsValid } from './auth.guard';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -34,8 +42,8 @@ export class AuthController {
     status: 401,
     description: 'Unauthorized. User could not be authenticated.',
   })
-  googleAuthRedirect(@Req() req) {
-    return this.authService.googleAuthRedirect(req);
+  googleAuthRedirect(@Req() req, @Res() res: Response) {
+    return this.authService.googleAuthRedirect(req, res);
   }
 
   @ApiOperation({
@@ -76,23 +84,43 @@ export class AuthController {
     description: 'Bad request',
   })
   @Post('signin')
-  emailSignin(@Body() signinAuthDto: SignInAuthDto) {
-    return this.authService.emailSignin(signinAuthDto);
+  emailSignin(@Body() signinAuthDto: SignInAuthDto, @Res() res: Response) {
+    return this.authService.emailSignin(signinAuthDto, res);
   }
 
   @ApiOperation({
-    summary: 'Generate new acc',
+    summary: 'Generate new access token',
     description: 'Allows a new user to sign in using their email and password',
   })
-  @Get('newtoken/:id')
-  getNewAccessToken(@Param('id') id: string) {
-    return this.authService.getNewAccessToken(id);
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Invalid refresh token',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'An error occured while refreshing the access token',
+  })
+  @Get('newtoken')
+  getNewAccessToken(@Req() req: Request) {
+    return this.authService.getNewAccessToken(req);
   }
-  @Get('token/:id')
-  getTokens(@Param('id') id: string) {
-    return this.authService.getTokens(id);
-  }
-  deleteTokens(@Param('id') id: string) {
-    return this.authService.deleteTokens(id);
+
+  @ApiOperation({
+    summary: 'Signout',
+    description: 'Sign out current user',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Token not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Something wrong with the server',
+  })
+  @ApiBearerAuth('access_token')
+  @UseGuards(IsValid)
+  @Get('signout')
+  signOut(@Req() req: Request) {
+    return this.authService.signOut(req);
   }
 }
