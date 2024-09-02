@@ -1,7 +1,34 @@
+import { ApiProperty } from '@nestjs/swagger';
+import {
+  IsString,
+  IsInt,
+  MinLength,
+  IsNotEmpty,
+  IsEmail,
+} from 'class-validator';
+
 export class CreateAuthDto {
-  gmail: string;
+  @ApiProperty({ example: 'John', description: 'The first name of the user' })
+  @IsString()
   first_name: string;
+
+  @ApiProperty({ example: 'Doe', description: 'The last name of the user' })
+  @IsNotEmpty()
+  @IsString()
   last_name: string;
-  picture: string;
-  access_token: string;
+  @ApiProperty({
+    example: 'example@gmail.com',
+    description: 'The email name of the user',
+  })
+  @IsEmail()
+  @IsNotEmpty()
+  gmail: string;
+
+  @IsNotEmpty()
+  @MinLength(6)
+  @ApiProperty({
+    example: 'password123',
+    description: 'The password of the user',
+  })
+  password: string;
 }

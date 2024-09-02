@@ -14,33 +14,33 @@ model User {
   picture     String?
   gmail       String    @unique
   phone       String?   @unique
-  // password    String
+  password    String?
   employee_id String?
   join_date   DateTime?
   blood_group String?
   auth        Auth?
   role        Role[]
-  team Team[]
+  team        Team[]
 }
 
 model Auth {
   id            String  @id @default(uuid())
-  refresh_token String?
-  access_token  String?
+  refresh_token String? @unique
   user_id       String  @unique
-  user          User?   @relation(fields: [user_id], references: [id])
+  user          User?   @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
 model Team {
-  id String @id @default(uuid())
-  user_id String @unique
+  id      String   @id @default(uuid())
+  name    String 
+  user_id String   @unique
   members String[] @unique
-  user User? @relation(fields: [user_id], references: [id])
+  user    User?    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
 model Role {
   id      String @id @default(uuid())
   name    String
   user_id String
-  user    User?  @relation(fields: [user_id], references: [id])
+  user    User?  @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
